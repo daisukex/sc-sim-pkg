@@ -1,0 +1,137 @@
+# ---------------------------------------------------------------------------
+# Space Cubics Simulation Environment
+#  XSIM Makefile
+#  Copyright © 2022-2023 Space Cubics, LLC.
+# ---------------------------------------------------------------------------
+
+# Simulation Settings
+#--------------------------------
+TESTCASE             := sample
+WAVE                 := on
+WAVE_FORMAT          := wdb
+
+# Command variables
+#--------------------------------
+VLOG                 := xvlog
+SVLOG                := xvlog -sv
+XVHDL                := xvhdl
+ELAB                 := xelab --timescale 1ps/1ps --debug all -L unisims_ver
+SIM                  := xsim
+WVIEW                := xsim --gui --nolog
+MKDIR                := mkdir -p
+RM                   := rm -rf
+CP                   := cp
+
+# Path and File variables
+#--------------------------------
+XIL_ROOT             := $(dir $(shell which xsim))..
+SC_SIM_PKG_SORCE     := ./benchs/sc-sim-pkg
+
+# DUT and Testbench Source
+#--------------------------------
+# DUT Source
+DUT_ROOT_DIR         := ../rtl
+DUT_DIR_LIST         := $(shell find $(DUT_ROOT_DIR) -type d)
+DUT_LIST             := $(foreach list, $(DUT_DIR_LIST), $(notdir $(wildcard $(list)/*.v)))
+DUT_LIST             += $(foreach list, $(DUT_DIR_LIST), $(notdir $(wildcard $(list)/*.sv)))
+DUT_HEADER_LIST      := $(foreach list, $(DUT_DIR_LIST), $(notdir $(wildcard $(list)/*.vh)))
+# Testbench Source
+TB_ROOT_DIR          := ./benchs
+TB_DIR_LIST          := $(shell find $(TB_ROOT_DIR) -type d)
+TB_LIST              := $(foreach list, $(TB_DIR_LIST), $(notdir $(wildcard $(list)/*.v)))
+TB_LIST              += $(foreach list, $(TB_DIR_LIST), $(notdir $(wildcard $(list)/*.sv)))
+# INCDIR
+INCDIR               := $(SC_SIM_PKG_SORCE)
+
+# Testcase
+#--------------------------------
+TESTCASE_DIR         := ./testcase
+
+# Simulation Enviroment Directory
+#--------------------------------
+XDB_DIR              := xsim.dir/work
+CLOG_DIR             := complog
+SLOG_DIR             := simlog
+WAV_DIR              := wave
+
+# For clean target
+#--------------------------------
+CF                   := $(dir $(XDB_DIR)) $(CLOG_DIR) $(SLOG_DIR) $(WAV_DIR)
+CF                   += sim_wave.tcl xsim* webtalk* xelab* xvlog* xvhdl* hs_err_* vivado_pid*
+
+vpath %.v   $(DUT_DIR_LIST)
+vpath %.sv  $(DUT_DIR_LIST)
+vpath %.v   $(TB_DIR_LIST)
+vpath %.sv  $(TB_DIR_LIST)
+vpath %.sdb $(XDB_DIR)
+
+# XSIM (Compile - Elaborate - Simulation)
+# ===========================================================================
+PHONY = all
+all: simulation
+
+# Sim Preparation
+#--------------------------------
+PHONY += sim_preparation
+sim_preparation:
+	$(MKDIR) $(CLOG_DIR)
+	echo '*' > $(CLOG_DIR)/.gitignore
+	$(MKDIR) $(SLOG_DIR)
+	echo '*' > $(SLOG_DIR)/.gitignore
+	$(MKDIR) $(XDB_DIR)
+	echo '*' > $(XDB_DIR)/.gitignore
+	$(MKDIR) $(WAV_DIR)
+	echo '*' > $(WAV_DIR)/.gitignore
+	echo $(TB_LIST:.v=.sdb)
+
+# Compile Design and Testbench
+#--------------------------------
+PHONY += dut_compile
+dut_compile: sim_preparation $(DUT_LIST:.v=.sdb) $(DUT_LIST:.sv=.sdb)
+
+PHONY += tb_compile
+tb_compile: sim_preparation $(TB_LIST:.v=.sdb) $(TB_LIST:.sv=.sdb)
+
+PHONY += testcase_compile
+testcase_compile: sim_preparation
+	$(SVLOG) -i $(INCDIR) --log $(CLOG_DIR)/$(TESTCASE)_compile.log $(TESTCASE_DIR)/$(TESTCASE).sv
+
+%.sdb: %.v $(RTL_HEADER_LIST)
+	$(VLOG) --log $(CLOG_DIR)/$(basename $(<F))_compile.log $<
+
+%.sdb: %.sv $(RTL_HEADER_LIST)
+	$(SVLOG) --log $(CLOG_DIR)/$(basename $(<F))_compile.log $<
+
+%.sdb: %.v $(RTL_HEADER_LIST)
+	$(VLOG) -i $(INCDIR) --log $(CLOG_DIR)/$(basename $(<F))_compile.log $<
+
+
+# Elaborate design
+#--------------------------------
+PHONY += elaborate
+elaborate: dut_compile tb_compile testcase_compile
+	$(ELAB) -s tb_top --log $(CLOG_DIR)/$(TESTCASE)_elab.log tb_top
+
+
+# Run Simulation
+#--------------------------------
+PHONY += simulation
+simulation: elaborate
+    ifeq ($(WAVE),on)
+        ifeq ($(WAVE_FORMAT),vcd)
+			echo "open_vcd $(WAV_DIR)/$(TESTCASE).vcd; log_vcd *; run -all; flush_vcd; close_vcd; exit" > sim_wave.tcl
+        else
+			echo "log_wave -r /; run -all; exit" > sim_wave.tcl
+        endif
+		$(SIM) --log $(SLOG_DIR)/$(TESTCASE).log -wdb $(WAV_DIR)/$(TESTCASE).wdb -t sim_wave.tcl tb_top
+    else
+		$(SIM) --log $(SLOG_DIR)/$(TESTCASE).log -R tb_top
+    endif
+
+# Clean Target
+#--------------------------------
+PHONY += clean
+clean:
+	$(RM) $(CF)
+
+.PHONY: $(PHONY)
