@@ -1,0 +1,14 @@
+#+TITLE: Space Cubics Simulation Package
+#+PROPERTY: header-args:emacs-lisp :results silent
+
+Space Cubics Simulation Packageは、RTLの Simulationを行うために使用するファイルを集めたファイル群です。
+
+* Supported Simulators
+  - XSIM (Vendor Xilinx)
+
+* Directory
+
+  | Directory                 | Description                                                                                                             |
+  |---------------------------+-------------------------------------------------------------------------------------------------------------------------|
+  | benchs (Testbench Source) | Verilog/System Verilogで書かれたテストベンチの共通コードを格納するディレクトリです                                      |
+  | makefile                  | 主に Simulationを実行するための ソースコードの Compileや Simulationを実行するための Makefileを格納する ディレクトリです |
