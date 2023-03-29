@@ -6,11 +6,9 @@
 //-----------------------------------------------
 
 parameter TESTCASE_NAME_MAX_WORD_COUNT = 128;
-parameter SIM_LABEL_MAX_WORD_COUNT = 128;
 parameter DISPLAY_TEST_MAX_WORD_COUNT = 128;
 
 wire [TESTCASE_NAME_MAX_WORD_COUNT*8-1:0] testcase_name;
-reg [SIM_LABEL_MAX_WORD_COUNT*8-1:0] label;
 integer simcount = 0;
 
 initial begin: _print_testcase_name
@@ -27,19 +25,22 @@ initial begin: _print_testcase_name
   display_divider(3);
 end
 
-always @ (simcount) begin: _print_label
-  integer dc;
-  if (simcount != 0) begin
-    display_divider(2);
-    $write("%d", $time);
-    $write(" | SIMCOUNT: %d : ", simcount);
-    for (dc=SIM_LABEL_MAX_WORD_COUNT; dc>=1; dc=dc-1) begin
-      if (label[dc*8-8 +:8] != "")
-        $write("%s", label[dc*8-8 +:8]);
-    end
-    $display();
+task display_label;
+  input [31:0] count;
+  input [DISPLAY_TEST_MAX_WORD_COUNT*8-1:0] label;
+  reg [31:0] dc;
+begin
+  simcount = count;
+  display_divider(2);
+  $write("%d", $time);
+  $write(" | SIMCOUNT: %d : ", simcount);
+  for (dc=DISPLAY_TEST_MAX_WORD_COUNT; dc>=1; dc=dc-1) begin
+    if (label[dc*8-8 +:8] != "")
+      $write("%s", label[dc*8-8 +:8]);
   end
+  $display();
 end
+endtask
 
 task display_text;
   input [DISPLAY_TEST_MAX_WORD_COUNT*8-1:0] text;
