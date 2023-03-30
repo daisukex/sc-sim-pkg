@@ -33,7 +33,8 @@ SC_SIM_PKG_SORCE     := ./benchs/sc-sim-pkg
 DUT_ROOT_DIR         := ../rtl
 DUT_DIR_LIST         := $(shell find $(DUT_ROOT_DIR) -type d)
 DUT_LIST             := $(foreach list, $(DUT_DIR_LIST), $(notdir $(wildcard $(list)/*.v)))
-DUT_LIST             += $(foreach list, $(DUT_DIR_LIST), $(notdir $(wildcard $(list)/*.sv)))
+DUT_LIST             += $(foreach list, $(DUT_DIR_LIST), $(notdir $(wildcard $(list)/*_pkg.sv)))
+DUT_LIST             += $(foreach list, $(DUT_DIR_LIST), $(filter-out %_pkg.sv, $(notdir $(wildcard $(list)/*.sv))))
 DUT_HEADER_LIST      := $(foreach list, $(DUT_DIR_LIST), $(notdir $(wildcard $(list)/*.vh)))
 # Testbench Source
 TB_ROOT_DIR          := ./benchs
